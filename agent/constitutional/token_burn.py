@@ -7,9 +7,8 @@ Treated as a constitutional violation: exceeding the budget halts the run.
 from dataclasses import dataclass, field
 from typing import Optional
 
-from agent.constitutional.hard_limits import ConstitutionalViolation
+from agent.constitutional.hard_limits import CheckResult
 
-# Default per-run budget. Override via TokenBurnGuard(budget=N).
 DEFAULT_TOKEN_BUDGET = 50_000
 
 
@@ -20,9 +19,9 @@ class TokenBurnGuard:
     Usage:
         guard = TokenBurnGuard()
         guard.start_run("run-123")
-        violation = guard.record(prompt_tokens=200, completion_tokens=150)
-        if violation:
-            halt_agent(violation)
+        result = guard.record(prompt_tokens=200, completion_tokens=150)
+        if not result.allowed:
+            halt_agent(result)
     """
 
     budget: int = DEFAULT_TOKEN_BUDGET
@@ -37,25 +36,24 @@ class TokenBurnGuard:
 
     def record(
         self, prompt_tokens: int, completion_tokens: int
-    ) -> Optional[ConstitutionalViolation]:
-        """Add tokens and return a violation if the budget is exceeded."""
+    ) -> CheckResult:
+        """Add tokens and return a CheckResult (allowed=False if over budget)."""
         self._total_prompt += max(0, prompt_tokens)
         self._total_completion += max(0, completion_tokens)
         total = self._total_prompt + self._total_completion
 
         if total > self.budget:
-            return ConstitutionalViolation(
-                rule="TOKEN_BUDGET_EXCEEDED",
+            return CheckResult(
+                allowed=False,
+                rule_violated="token_budget_exceeded",
                 reason=(
                     f"Run {self._run_id!r} used {total} tokens "
                     f"(budget={self.budget}). "
                     f"prompt={self._total_prompt}, "
                     f"completion={self._total_completion}"
                 ),
-                tool_name="<runtime>",
-                inputs={"total_tokens": total, "budget": self.budget},
             )
-        return None
+        return CheckResult(allowed=True, rule_violated=None, reason=None)
 
     @property
     def tokens_used(self) -> int:

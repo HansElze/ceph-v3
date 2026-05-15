@@ -1,7 +1,7 @@
 """ADK before_tool_callback that enforces hard constitutional limits.
 
 Wire this into Agent(before_tool_callback=constitutional_guard) in planner.py.
-The callback returns a structured error dict if a limit fires — ADK uses that
+The callback returns a structured error dict if a rule fires — ADK uses that
 as the tool result without ever calling the actual tool function.
 """
 
@@ -11,20 +11,26 @@ from typing import Any, Optional
 from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.tool_context import ToolContext
 
-from agent.constitutional.hard_limits import HardLimits
+from agent.constitutional.hard_limits import HardLimits, ToolCall
 
 logger = logging.getLogger(__name__)
 
 _limits = HardLimits()
 
-# Module-level tracer reference — set by __main__.py after ArizeTracer is init'd
-_tracer = None
+# Injected by executor.py after ArizeTracer is initialised
+_tracer: Any = None
+# Injected run_id for ToolCall construction
+_current_run_id: str = ""
 
 
 def set_tracer(tracer: Any) -> None:
-    """Inject the ArizeTracer instance so violations are logged to Arize."""
     global _tracer
     _tracer = tracer
+
+
+def set_run_id(run_id: str) -> None:
+    global _current_run_id
+    _current_run_id = run_id
 
 
 def constitutional_guard(
@@ -34,33 +40,40 @@ def constitutional_guard(
 ) -> Optional[dict]:
     """Return a blocked-response dict if a hard limit fires; else None.
 
-    Returning None tells ADK to proceed with the real tool call.
-    Returning a dict tells ADK to use that as the tool result and skip the tool.
+    None  → ADK calls the real tool function.
+    dict  → ADK uses this as the tool result; real tool is never called.
     """
-    violation = _limits.check_tool_call(tool.name, args)
-    if violation is None:
+    tool_call = ToolCall(
+        name=tool.name,
+        inputs=args,
+        agent_run_id=_current_run_id,
+    )
+    result = _limits.check_tool_call(tool_call)
+
+    if result.allowed:
         return None
 
     logger.warning(
         "[CONSTITUTIONAL BLOCK] rule=%s tool=%s reason=%s",
-        violation.rule,
-        violation.tool_name,
-        violation.reason,
+        result.rule_violated,
+        tool.name,
+        result.reason,
     )
 
     if _tracer is not None:
         try:
             _tracer.log_violation(
-                rule=violation.rule,
-                details={"reason": violation.reason, "inputs": violation.inputs},
+                rule=result.rule_violated or "unknown",
+                details={"reason": result.reason, "inputs": args},
                 halted=True,
             )
         except Exception as exc:
             logger.warning("guard: tracer.log_violation failed: %s", exc)
 
     return {
-        "status": 0,
-        "content": "",
-        "error": f"[CONSTITUTIONAL VIOLATION: {violation.rule}] {violation.reason}",
+        "status": "blocked",
+        "reason": result.reason,
+        "rule": result.rule_violated,
+        "error": f"[CONSTITUTIONAL VIOLATION: {result.rule_violated}] {result.reason}",
         "halted": True,
     }
