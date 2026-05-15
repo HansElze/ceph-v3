@@ -20,7 +20,12 @@ See [docs/ceph-history.md](docs/ceph-history.md).
 
 ## Quickstart
 
-Coming in week 2.
+1. Copy `.env.example` to `.env` and fill in your GCP project ID
+2. Authenticate: `gcloud auth application-default login`
+3. Install: `pip install -e .` (or `uv sync`)
+4. Run: `python -m agent "Fetch https://example.com and summarize it"`
+
+Expected output: agent calls `web_fetch`, returns a summary of example.com.
 
 ## Built With
 
