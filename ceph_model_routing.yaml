@@ -1,0 +1,28 @@
+# MODEL-001 — Ceph v3 three-tier model routing (config; env-var driven, NO hardcoded keys).
+# Consumed by agent/model_routing.py. Live cutover + validation (6.1/6.2/6.3) are Navigator-run.
+tiers:
+  routine:
+    model: "deepseek/deepseek-v4-flash"
+    base_url: ${OPENROUTER_BASE_URL}          # https://openrouter.ai/api/v1
+    api_key_env: OPENROUTER_API_KEY
+    max_tokens: 4096
+    timeout_s: 60
+  escalate:
+    model: "moonshotai/kimi-k2.6"
+    base_url: ${OPENROUTER_BASE_URL}
+    api_key_env: OPENROUTER_API_KEY
+    provider_pin: ${K26_PROVIDER_PIN}          # set after A/B validation (A2); non-quantized/first-party
+    max_tokens: 8192
+    timeout_s: 180
+  fallback:
+    model: "local/llama"                       # existing local endpoint — liveness only
+    base_url: ${LOCAL_LLM_BASE_URL}
+    timeout_s: 120
+routing:
+  escalate_domains: ["governance_review", "financial_modeling"]
+  escalate_task_types: ["prp_validation_report", "council_panel", "dispute", "appeal"]
+  max_tier0_retries: 2
+  confidence_threshold: 0.6
+residency:
+  blocked_payload_tags: ["canon_sensitive", "investor_sensitive", "key_material"]
+  blocked_first_party_endpoints: ["api.moonshot.ai", "api.deepseek.com"]
