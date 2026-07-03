@@ -1,0 +1,53 @@
+{
+  "_meta": {
+    "spec": "MODEL-001 escalate-tier A/B (6.2 prep)",
+    "candidates": ["moonshotai/kimi-k2.6", "qwen/qwen-3.6-plus"],
+    "purpose": "Decide which model the TIER 1 (escalate) path pins. Incumbent is kimi-k2.6; qwen wins only on a clear margin.",
+    "distribution": "8 governance_review, 6 financial_modeling, 6 structured_output_fidelity",
+    "note": "Prompts are pilot fixtures — no canon-sensitive or key_material content (A/B may run on any allowed provider)."
+  },
+  "tasks": [
+    {"id": "gov-01", "domain": "governance_review", "task_type": "prp_validation_report",
+     "prompt": "A proposal requests a Newtown Creek bulkhead retrofit. Produce a Builder-Steward validation report: score 0-100, confidence 0-1, decision (approve/revise/reject), and 3 cited concerns.", "rubric_focus": ["schema", "reasoning", "calibration"]},
+    {"id": "gov-02", "domain": "governance_review", "task_type": "prp_validation_report",
+     "prompt": "Validate a proposal that claims a 40% embodied-carbon reduction with no lifecycle citation. Return a validation report; the missing evidence must lower confidence.", "rubric_focus": ["skepticism", "calibration"]},
+    {"id": "gov-03", "domain": "governance_review", "task_type": "council_panel",
+     "prompt": "You are one of five council stewards. Summarize your independent position on a mixed-use over/under deck proposal in <=120 words, ending with approve or revise.", "rubric_focus": ["independence", "concision"]},
+    {"id": "gov-04", "domain": "governance_review", "task_type": "dispute",
+     "prompt": "Two stewards dispute whether a proposal double-counts a resilience credit. Rule on the dispute, state the deciding rule, and the remedy.", "rubric_focus": ["reasoning", "decisiveness"]},
+    {"id": "gov-05", "domain": "governance_review", "task_type": "appeal",
+     "prompt": "An agent appeals a rejected validation, alleging the panel ignored a submitted soil report. Decide the appeal: uphold or remand, with the procedural basis.", "rubric_focus": ["procedure", "fairness"]},
+    {"id": "gov-06", "domain": "governance_review", "task_type": "prp_validation_report",
+     "prompt": "Score a proposal that is technically sound but omits a required principal-accountability attestation. The omission must block approval regardless of technical merit.", "rubric_focus": ["rule_adherence"]},
+    {"id": "gov-07", "domain": "governance_review", "task_type": "council_panel",
+     "prompt": "Identify the single strongest reason to REJECT an otherwise-strong coastal-desert campus siting proposal near a fog-water aquifer. One paragraph.", "rubric_focus": ["insight"]},
+    {"id": "gov-08", "domain": "governance_review", "task_type": "dispute",
+     "prompt": "A steward and an agent disagree on whether 'activity reward' language in a proposal crosses into prohibited 'yield' framing. Rule, citing the vocabulary standard.", "rubric_focus": ["policy_precision"]},
+
+    {"id": "fin-01", "domain": "financial_modeling", "task_type": "prp_validation_report",
+     "prompt": "Given a reward pool of 100000 units, 4 stewards with standing weights 0.4/0.3/0.2/0.1, compute each payout and show the arithmetic.", "rubric_focus": ["arithmetic", "showing_work"]},
+    {"id": "fin-02", "domain": "financial_modeling", "task_type": "prp_validation_report",
+     "prompt": "A ratecard prices validation at 12 units/report with a 1.5x multiplier for Council tier. Compute the cost of 37 Council-tier reports and 88 standard reports.", "rubric_focus": ["arithmetic"]},
+    {"id": "fin-03", "domain": "financial_modeling", "task_type": "dispute",
+     "prompt": "Explain why a 'compute access certificate' prepaid balance must NOT be modeled as an interest-bearing instrument, in <=100 words.", "rubric_focus": ["domain_correctness", "policy"]},
+    {"id": "fin-04", "domain": "financial_modeling", "task_type": "prp_validation_report",
+     "prompt": "A CAC card has a per-hour cap of 500 units and a per-day cap of 6000. An agent burns 480/hr for 14 hours. When does it first hit a cap, and which one?", "rubric_focus": ["reasoning", "arithmetic"]},
+    {"id": "fin-05", "domain": "financial_modeling", "task_type": "council_panel",
+     "prompt": "Sanity-check a claim that a Reg A+ raise of 75M at a 12% platform fee nets 63M. State whether it is correct and why.", "rubric_focus": ["arithmetic", "skepticism"]},
+    {"id": "fin-06", "domain": "financial_modeling", "task_type": "appeal",
+     "prompt": "An agent claims its reward was underpaid because standing decay was applied twice. Given base 200 units and 10% decay, show the correct single-decay figure and the erroneous double-decay figure.", "rubric_focus": ["arithmetic", "clarity"]},
+
+    {"id": "sof-01", "domain": "governance_review", "task_type": "prp_validation_report",
+     "prompt": "Return ONLY JSON: {\"score\": int 0-100, \"confidence\": float 0-1, \"decision\": one of approve|revise|reject, \"concerns\": [string]}. Subject: a stormwater park proposal you rate marginal.", "rubric_focus": ["schema"], "schema": {"required": ["score", "confidence", "decision", "concerns"]}},
+    {"id": "sof-02", "domain": "governance_review", "task_type": "prp_validation_report",
+     "prompt": "Return ONLY the JSON object with keys score (integer), confidence (number), decision (string), concerns (array). No prose. Subject: a proposal you strongly approve.", "rubric_focus": ["schema"], "schema": {"required": ["score", "confidence", "decision", "concerns"]}},
+    {"id": "sof-03", "domain": "financial_modeling", "task_type": "prp_validation_report",
+     "prompt": "Return ONLY JSON {\"total_units\": integer, \"per_steward\": [number], \"method\": string} for splitting 50000 units across 3 equal stewards.", "rubric_focus": ["schema", "arithmetic"], "schema": {"required": ["total_units", "per_steward", "method"]}},
+    {"id": "sof-04", "domain": "governance_review", "task_type": "dispute",
+     "prompt": "Return ONLY JSON {\"ruling\": string, \"rule_cited\": string, \"remedy\": string}. A dispute over a duplicated resilience credit.", "rubric_focus": ["schema"], "schema": {"required": ["ruling", "rule_cited", "remedy"]}},
+    {"id": "sof-05", "domain": "governance_review", "task_type": "council_panel",
+     "prompt": "Return ONLY a JSON array of exactly 3 objects, each {\"concern\": string, \"severity\": one of low|medium|high}. Subject: a marina expansion proposal.", "rubric_focus": ["schema", "structure"], "schema": {"required": []}},
+    {"id": "sof-06", "domain": "financial_modeling", "task_type": "prp_validation_report",
+     "prompt": "Return ONLY JSON {\"hits_cap\": boolean, \"which_cap\": one of hour|day|none, \"at_hour\": integer}. Caps: 500/hr, 6000/day; burn 300/hr for 24h.", "rubric_focus": ["schema", "reasoning"], "schema": {"required": ["hits_cap", "which_cap", "at_hour"]}}
+  ]
+}

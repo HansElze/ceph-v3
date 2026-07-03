@@ -37,6 +37,7 @@ DEFAULT_CONFIG = {
     "residency": {
         "blocked_payload_tags": ["canon_sensitive", "investor_sensitive", "key_material"],
         "blocked_first_party_endpoints": ["api.moonshot.ai", "api.deepseek.com"],
+        "us_hosted_provider_allowlist": ["Together", "Fireworks", "DeepInfra"],
     },
 }
 
@@ -109,6 +110,34 @@ def endpoint_allowed(endpoint: str, payload_tags, config: Optional[dict] = None)
     if residency_blocked(payload_tags, config):
         return endpoint not in set(config["residency"]["blocked_first_party_endpoints"])
     return True
+
+
+class ResidencyException(Exception):
+    """A blocked-tag payload cannot be routed within residency policy — caller must divert to the
+    premium exception path (a US-hosted dedicated endpoint) rather than send it at all."""
+
+
+def us_hosted_allowlist(config: Optional[dict] = None) -> list:
+    config = config or DEFAULT_CONFIG
+    return list(config["residency"].get("us_hosted_provider_allowlist", []))
+
+
+def provider_constraint(payload_tags, config: Optional[dict] = None) -> Optional[dict]:
+    """§4.1 / A4 — the OpenRouter `provider` routing constraint for a payload.
+
+    For a blocked-tag payload (e.g. key_material), return `{"only": [<US-hosted providers>]}` so
+    OpenRouter serves the model ONLY from the US-hosted allowlist — the PRC first-party providers
+    (moonshot / deepseek) are structurally excluded. For an unblocked payload, return None (no
+    constraint). If a payload is blocked but no US-hosted allowlist is configured, raise
+    ResidencyException so the caller diverts to the premium exception path instead of leaking it."""
+    config = config or DEFAULT_CONFIG
+    if not residency_blocked(payload_tags, config):
+        return None
+    allow = us_hosted_allowlist(config)
+    if not allow:
+        raise ResidencyException(
+            "blocked-tag payload but no us_hosted_provider_allowlist configured; divert to exception path")
+    return {"only": list(allow)}
 
 
 # --------------------------------------------------------------- §4.2 tool-call schema validation

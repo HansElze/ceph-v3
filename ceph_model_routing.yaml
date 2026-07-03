@@ -1,22 +1,24 @@
 # MODEL-001 — Ceph v3 three-tier model routing (config; env-var driven, NO hardcoded keys).
-# Consumed by agent/model_routing.py. Live cutover + validation (6.1/6.2/6.3) are Navigator-run.
+# Consumed by agent/model_routing.py. Keys ending in `_env` NAME an environment variable; the client
+# wrapper resolves them at call time (base_url, api key, provider pin). Must stay in parity with
+# model_routing.DEFAULT_CONFIG (enforced by tests/test_config_parity.py). Live cutover is Navigator-run.
 tiers:
   routine:
     model: "deepseek/deepseek-v4-flash"
-    base_url: ${OPENROUTER_BASE_URL}          # https://openrouter.ai/api/v1
+    base_url_env: OPENROUTER_BASE_URL
     api_key_env: OPENROUTER_API_KEY
     max_tokens: 4096
     timeout_s: 60
   escalate:
     model: "moonshotai/kimi-k2.6"
-    base_url: ${OPENROUTER_BASE_URL}
+    base_url_env: OPENROUTER_BASE_URL
     api_key_env: OPENROUTER_API_KEY
-    provider_pin: ${K26_PROVIDER_PIN}          # set after A/B validation (A2); non-quantized/first-party
+    provider_pin_env: K26_PROVIDER_PIN
     max_tokens: 8192
     timeout_s: 180
   fallback:
-    model: "local/llama"                       # existing local endpoint — liveness only
-    base_url: ${LOCAL_LLM_BASE_URL}
+    model: "local/llama"
+    base_url_env: LOCAL_LLM_BASE_URL
     timeout_s: 120
 routing:
   escalate_domains: ["governance_review", "financial_modeling"]
@@ -26,3 +28,6 @@ routing:
 residency:
   blocked_payload_tags: ["canon_sensitive", "investor_sensitive", "key_material"]
   blocked_first_party_endpoints: ["api.moonshot.ai", "api.deepseek.com"]
+  # A blocked-tag payload must route via an OpenRouter US-hosted provider allowlist (provider.only)
+  # or divert to the premium exception path. TODO(NAVIGATOR): ratify the acceptable provider list.
+  us_hosted_provider_allowlist: ["Together", "Fireworks", "DeepInfra"]
